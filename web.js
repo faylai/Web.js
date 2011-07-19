@@ -383,7 +383,7 @@ web.get = function (_gethandlers) {
 web.post = function (_posthandlers) {
 	var key;
 	for (key in _posthandlers) {
-		posthandlers[key] = _posthandlers[key];
+		postHandlers[key] = _posthandlers[key];
 	}
 	return this;
 };
