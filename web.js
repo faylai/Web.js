@@ -4,7 +4,8 @@ var http = require("http"),
     sys = require("sys"),
 	url = require("url"),
 	qs = require("querystring"),
-	net = require("net");
+	net = require("net"),
+	events = require("events");
 
 //Metas
 var web = exports,
@@ -237,6 +238,7 @@ var content,
 		};
 		res.clearCookie = function (name, options) {
 			var opts = { expires: new Date(1) };
+
 			return this.cookie(name, '', options
 				? utils.merge(options, opts)
 				: opts);
@@ -438,5 +440,30 @@ web.reg = function (format, mime) {
 		this.mimes[format] = mime;
 	}
 	return this;
-}
+};
 web.server = server;
+
+//TCP Server
+var sockets = [];
+web.net = function (port, callback) {
+	var tcpServer = net.createServer(function (socket) {
+		sys.inherits(socket, events.EventEmitter);
+		socket.id = Math.round(Math.random() * 10000000000);
+		socket.on('data', function (data) {
+			socket.listeners('message')[socket.listeners('message').length - 1](data);
+		});
+		socket.on('end', function () {
+			socket.listeners('disconnect')[socket.listeners('disconnect').length - 1]();
+		});
+		socket.send = socket.write;
+		socket.broadcast = function (data) {
+			for (var i = 0; i < sockets.length; i++) {
+				if (sockets[i] == socket) continue;
+				sockets[i].write(data);
+			}
+		};
+		sockets.push(socket);
+		callback(socket);
+	}).listen(port);
+	return tcpServer;
+};
