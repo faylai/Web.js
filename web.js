@@ -184,100 +184,104 @@ web.mimes = { "3gp"   : "video/3gpp",
 				 "yml"   : "text/yaml",
 				 "zip"   : "application/zip"
 				},
-			web.metas = {};
+			web.metas = {},
+			web.servers = [];
 //Foundation Server
-var content,
-	server = http.createServer(function (req, res) {
-		var path = url.parse(req.url).pathname.substring(1);
-
-		//Response
-		res.send = function (data, alive) {
-			this.writeHead(200, {'Content-Type' : "text/html"});
-			this.write(data);
-			if (alive) {
-				return this;
-			} else {
-				this.end();
-				return this;
-			}
-		};
-		res.sendFile = function (fileName) {
-			var format = fileName.split('.');
-			fs.readFile("./" + fileName, function (err, data) {
-				if (err) return send404(res);
-				this.charset = web.mimes[format[format.length - 1]];
-				res.writeHead(200, {'Content-Type' : this.charset});
-				res.write(data);
-				res.end();
-			});
-		}
-		res.sendJSON = function (data) {
-			switch (typeof data) {
-				case "string":
-					this.charset = "application/json";
-					res.writeHead(200, {'Content-Type' : this.charset});
-					res.write(data);
-					res.end();
-					break;
-				case "object":
-					var sJSON = JSON.stringify(data);
-					this.charset = "application/json";
-					res.writeHead(200, {'Content-Type' : this.charset});
-					res.write(sJSON);
-					res.end();
-					break;
-			}
-		}
-		res.cookie = function (name, val, options) {
-			options = options || {};
-			if ('maxAge' in options) options.expires = new Date(Date.now() + options.maxAge);
-			if (undefined === options.path) options.path = this.app.set('home');
-			var cookie = utils.serializeCookie(name, val, options);
-			this.header('Set-Cookie', cookie);
-			return this;
-		};
-		res.clearCookie = function (name, options) {
-			var opts = { expires: new Date(1) };
-
-			return this.cookie(name, '', options
-				? utils.merge(options, opts)
-				: opts);
-		};
-
-		//Request
-		req.addListener('data', function(chunk) {
-			content += chunk;
-		});
-		req.type = function(type) {
-			var contentType = this.headers['content-type'];
-			if (!contentType) return;
-			if (!~type.indexOf('/')) type = web.mimes[type];
-			if (~type.indexOf('*')) {
-				type = type.split('/')
-				contentType = contentType.split('/');
-				if ('*' == type[0] && type[1] == contentType[1]) return true;
-				if ('*' == type[1] && type[0] == contentType[0]) return true;
-			}
-			return !! ~contentType.indexOf(type);
-		};
-		req.header = function (sHeader) {
-			if (this.headers[sHeader]) {
-				return this.headers[sHeader];
-			} else {
-				return undefined;
-			}
-		}
-
-		switch (req.method) {
-			case "GET":
-				getHandler(req, res, path);
-				break;
-			case "POST":
-				postHandler(req, res, path);
-				break;
-		}
-	});
-
+var server;
+function createHttpServer() {
+    var content;
+    server = http.createServer(function (req, res) {
+    		var path = url.parse(req.url).pathname.substring(1);
+    
+    		//Response
+    		res.send = function (data, alive) {
+    			this.writeHead(200, {'Content-Type' : "text/html"});
+    			this.write(data);
+    			if (alive) {
+    				return this;
+    			} else {
+    				this.end();
+    				return this;
+    			}
+    		};
+    		res.sendFile = function (fileName) {
+    			var format = fileName.split('.');
+    			fs.readFile("./" + fileName, function (err, data) {
+    				if (err) return send404(res);
+    				this.charset = web.mimes[format[format.length - 1]];
+    				res.writeHead(200, {'Content-Type' : this.charset});
+    				res.write(data);
+    				res.end();
+    			});
+    		}
+    		res.sendJSON = function (data) {
+    			switch (typeof data) {
+    				case "string":
+    					this.charset = "application/json";
+    					res.writeHead(200, {'Content-Type' : this.charset});
+    					res.write(data);
+    					res.end();
+    					break;
+    				case "object":
+    					var sJSON = JSON.stringify(data);
+    					this.charset = "application/json";
+    					res.writeHead(200, {'Content-Type' : this.charset});
+    					res.write(sJSON);
+    					res.end();
+    					break;
+    			}
+    		}
+    		res.cookie = function (name, val, options) {
+    			options = options || {};
+    			if ('maxAge' in options) options.expires = new Date(Date.now() + options.maxAge);
+    			if (undefined === options.path) options.path = this.app.set('home');
+    			var cookie = utils.serializeCookie(name, val, options);
+    			this.header('Set-Cookie', cookie);
+    			return this;
+    		};
+    		res.clearCookie = function (name, options) {
+    			var opts = { expires: new Date(1) };
+    
+    			return this.cookie(name, '', options
+    				? utils.merge(options, opts)
+    				: opts);
+    		};
+    
+    		//Request
+    		req.addListener('data', function(chunk) {
+    			content += chunk;
+    		});
+    		req.type = function(type) {
+    			var contentType = this.headers['content-type'];
+    			if (!contentType) return;
+    			if (!~type.indexOf('/')) type = web.mimes[type];
+    			if (~type.indexOf('*')) {
+    				type = type.split('/')
+    				contentType = contentType.split('/');
+    				if ('*' == type[0] && type[1] == contentType[1]) return true;
+    				if ('*' == type[1] && type[0] == contentType[0]) return true;
+    			}
+    			return !! ~contentType.indexOf(type);
+    		};
+    		req.header = function (sHeader) {
+    			if (this.headers[sHeader]) {
+    				return this.headers[sHeader];
+    			} else {
+    				return undefined;
+    			}
+    		}
+    
+    		switch (req.method) {
+    			case "GET":
+    				getHandler(req, res, path);
+    				break;
+    			case "POST":
+    				postHandler(req, res, path);
+    				break;
+    		}
+    	});
+    return server;
+}
 //404 page
 var page404 = "Page not found.",
 	send404 = function (res) {
@@ -389,11 +393,19 @@ web.post = function (_posthandlers) {
 	}
 	return this;
 };
-web.run = function (getpath, port, host) {
+web.run = function (getpath, port, host, backserver) {
+	if (server == undefined) {
+        server = createHttpServer();
+        web.servers.push(server);
+	}
 	if (getpath == undefined) {
 		server.listen(80);
-		console.log('Server is running on 127.0.0.1:80')
-		return this;
+		console.log('Server is running on 127.0.0.1:80');
+		if (backserver) {
+		    return server;
+		} else {
+	 	    return this;
+		}
 	} else {
 		var key;
 		for (key in getpath) {
@@ -406,7 +418,11 @@ web.run = function (getpath, port, host) {
 				server.listen(port, host);
 			}
 		}
-		return this;
+		if (backserver){
+		    return server;
+		} else {
+		    return this;
+		}
 	}
 };
 web.set404 = function (path) {
@@ -449,11 +465,22 @@ web.net = function (port, callback) {
 	var tcpServer = net.createServer(function (socket) {
 		sys.inherits(socket, events.EventEmitter);
 		socket.id = Math.round(Math.random() * 10000000000);
+		socket.on('connect', function () {
+			for (var i = 0; i < socket.listeners('connection').length; i++) {
+				socket.listeners('connection')[i]();
+			}
+		});
 		socket.on('data', function (data) {
-			socket.listeners('message')[socket.listeners('message').length - 1](data);
+			for (var i = 0; i < socket.listeners('message').length; i++) {
+				socket.listeners('message')[i](data);
+			}
 		});
 		socket.on('end', function () {
-			socket.listeners('disconnect')[socket.listeners('disconnect').length - 1]();
+			var a = sockets.indexOf(socket);
+			sockets.splice(a, 1);
+			for (var i = 0; i < socket.listeners('disconnect').length; i++) {
+				socket.listeners('disconnect')[i]();
+			}
 		});
 		socket.send = socket.write;
 		socket.broadcast = function (data) {
