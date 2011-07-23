@@ -1,106 +1,39 @@
-# Web.js : a framework like Webpy for NodeJS. #
+# Web.js: Simple HTTP / TCP development framework. #
+For detailed information about this, please visit the [Web.js homepage].
+如果想获得详细的关于Web.js的信息，请浏览官方网页。
 
-For detailed information about this and other Node.js
-Developer visit the [Node.js Web.js homepage] [homepage].
-
-## INSTALL ##
+## Install ##
 
 ```
 npm install webjs
 ```
 
-## QUICK START ##
-
+## Quick Start ##
 ```javascript
-var web = require("webjs"),
-	urls = {
-			"test/([a-zA-Z0-9])" : "test.html",
-			"[0-9]" : "README.txt"
-			}
-web.run(urls, 8888)
-	.server.on("request",function (req, res) {
-		console.log("Getting " + req.url);
-	});
-console.log("It's running.");
-```
+var web = require('webjs');
 
-## GET ##
-```javascript
-var web = require("webjs"),
-	urls = {
-			"^test/([a-zA-Z0-9])" : "test.html",
-			"^[0-9]" : "testimage.jpg"
-			},
-	gets = {
-			"get" : function (res) {
-						res.send('Getting.');
+var urlHandlers = {					//URL路由功能(包括文件映射和域名跳转)
+		'^([a-zA-Z0-9])' : 'page.html', //Return the 'page.html' data. 返回 'page.html' 的数据。(支持正则表达式)
+		'^google' : 'http://www.google.com' //When the path name is 'google', the browser will redirect to Google homepage.  当访问/google时，浏览器自动跳转到Google首页。
+		},
+    getHandlers = {					//GET方法服务器响应
+		'getsomething' : function (req, res, qs) {
+					for (var key in qs) {
+						res.send(key + ' : ' + qs[key], true);		//res.send 方法接受两个参数，第一个是需要传输的数据，第二个是确定是否保持通讯不中断，以供继续传输。
 					}
-			};
-web.run(urls, 8888)
-	.get(gets);
-console.log("It's running.");
+					res.send('That all');
+				}
+		},
+    postHandlers = {
+		'postsomething' : function (req, res, data) {	//POST方法服务器响应
+					res.send('Post success');
+				}
+		};
+web.run(urlHandlers, 80)	//启动首个服务器，并传入传入URL映射规则
+	.get(getHandlers)	//传入GET方法规则
+	.post(postHandlers)；	//传入POST方法规则
 ```
 
-## POST ##
-```javascript
-var web = require("webjs"),
-	urls = {
-			"test/([a-zA-Z0-9])" : "test.html",
-			"[0-9]" : "testimage.jpg"
-			},
-	posts = {
-			"post" : function (req, res, data) {
-						var qss = "";
-						for (var key in data) {
-							qss += key + ":" + data[key] + "<br />";
-						}
-						res.send(qss);
-					}
-			}
-web.run(urls, 8888)
-	.post(posts);
-```
-## Custom 404 Page ##
-```javascript
-var web = require("webjs").set404("404.html");
-```
 
-## Block the current file format ##
-```javascript
-var web = require("webjs"),
-	noMimes = {
-			'php' : function (req, res) {
-						web.send(res, "Sorry. This isn't a php file.")
-					},
-			'exe' : function (req, res) {
-						web.send(res, "Sorry. This isn't a exe file.");
-					},
-			'asp' : function (req, res) {
-						web.send(res, "Sorry. This isn't a asp file.");
-					}
-			};
-web.run()
-	.noMimes(noMimes);
-```
 
-## Server meta infomation setting ##
-```javascript
-var web = require("webjs")
-			.run()
-			.meta('index', 'index.html');
-```
-
-## Custom MIME file type ##
-```javascript
-var web = require("webjs")
-			.run()
-			.reg('webm', 'video/webm')
-			.reg('ogv', 'video/ogg');
-```
-
-## LICENSE ##
-
-This module is released under the [MIT License] [license].
-
-[homepage]: http://www.iwillwen.com
-[license]: http://www.opensource.org/licenses/mit-license.php
+详细文档正在编写中
