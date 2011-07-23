@@ -397,6 +397,7 @@ web.run = function (getpath, port, host, backserver) {
 	if (server == undefined) {
         server = createHttpServer();
         web.servers.push(server);
+	web.server = server;
 	}
 	if (getpath == undefined) {
 		server.listen(80);
@@ -457,7 +458,6 @@ web.reg = function (format, mime) {
 	}
 	return this;
 };
-web.server = server;
 
 //TCP Server
 var sockets = [];
