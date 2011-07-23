@@ -7,10 +7,14 @@ Developer visit the [Node.js Web.js homepage] [homepage].
 
 Copy Web.js files into your application folder.
 
+```
+npm install webjs
+```
+
 ## QUICK START ##
 
 ```javascript
-var web = require("./web/web"),
+var web = require("webjs"),
 	urls = {
 			"test/([a-zA-Z0-9])" : "test.html",
 			"[0-9]" : "README.txt"
@@ -24,7 +28,7 @@ console.log("It's running.");
 
 ## GET ##
 ```javascript
-var web = require("./web"),
+var web = require("webjs"),
 	urls = {
 			"^test/([a-zA-Z0-9])" : "test.html",
 			"^[0-9]" : "testimage.jpg"
@@ -41,7 +45,7 @@ console.log("It's running.");
 
 ## POST ##
 ```javascript
-var web = require("./web"),
+var web = require("webjs"),
 	urls = {
 			"test/([a-zA-Z0-9])" : "test.html",
 			"[0-9]" : "testimage.jpg"
@@ -60,12 +64,12 @@ web.run(urls, 8888)
 ```
 ## Custom 404 Page ##
 ```javascript
-var web = require("./web").set404("404.html");
+var web = require("webjs").set404("404.html");
 ```
 
 ## Block the current file format ##
 ```javascript
-var web = require("./web"),
+var web = require("webjs"),
 	noMimes = {
 			'php' : function (req, res) {
 						web.send(res, "Sorry. This isn't a php file.")
@@ -83,14 +87,14 @@ web.run()
 
 ## Server meta infomation setting ##
 ```javascript
-var web = require("./web")
+var web = require("webjs")
 			.run()
 			.meta('index', 'index.html');
 ```
 
 ## Custom MIME file type ##
 ```javascript
-var web = require("./web")
+var web = require("webjs")
 			.run()
 			.reg('webm', 'video/webm')
 			.reg('ogv', 'video/ogg');
