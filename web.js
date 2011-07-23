@@ -1,7 +1,6 @@
-//Modules
 var http = require("http"),
-    fs = require("fs"),
-    sys = require("sys"),
+	fs = require("fs"),
+	sys = require("sys"),
 	url = require("url"),
 	qs = require("querystring"),
 	net = require("net"),
@@ -192,15 +191,14 @@ function createHttpServer() {
     var content;
     server = http.createServer(function (req, res) {
     		var path = url.parse(req.url).pathname.substring(1);
-    
+
     		//Response
     		res.send = function (data, alive) {
-    			this.writeHead(200, {'Content-Type' : "text/html"});
-    			this.write(data);
     			if (alive) {
-    				return this;
+				res.write(data);
+				return this;
     			} else {
-    				this.end();
+    				res.end(data);
     				return this;
     			}
     		};
@@ -309,6 +307,7 @@ var	getHandler = function (req, res, getpath) {
 					var querystrings = url.parse(req.url, true).query;
 					if (uhReg.test(getpath)) {
 						try {
+							res.writeHead(200, {'Content-type' : 'text/html'});
 							getHandlers[key](req, res, querystrings);
 						} catch(ex) {
 							if (erorrHandlers.get) {
