@@ -5,8 +5,6 @@ Developer visit the [Node.js Web.js homepage] [homepage].
 
 ## INSTALL ##
 
-Copy Web.js files into your application folder.
-
 ```
 npm install webjs
 ```
