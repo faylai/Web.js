@@ -31,7 +31,7 @@ var urlHandlers = {					//URL路由功能(包括文件映射和域名跳转)
 		};
 web.run(urlHandlers, 80)	//启动首个服务器，并传入传入URL映射规则
 	.get(getHandlers)	//传入GET方法规则
-	.post(postHandlers)；	//传入POST方法规则
+	.post(postHandlers);	//传入POST方法规则
 ```
 
 
