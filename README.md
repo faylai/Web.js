@@ -34,6 +34,15 @@ web.run(urlHandlers, 80)	//启动首个服务器，并传入传入URL映射规�
 	.post(postHandlers);	//传入POST方法规则
 ```
 
+## 简单化部署 Simple Deployment ##
+如果你只想在某个文件夹内建立一个简单的文件服务器，那是非常简单的。
+If you only want to deploy a simple file server, that's very easy!
+
+```javascript
+require('webjs').run()
+```
+没错的，就是这么简单。
+
 
 
 详细文档正在编写中
