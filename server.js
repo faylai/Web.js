@@ -6,7 +6,7 @@ var web = require("./web"),
 			},
 	gets = {
 			"get" : function (req, res, qs) {
-						res.send('Test the GET<br />' + qss);
+						res.send('Test the GET<br />' + JSON.stringify(qs));
 					}
 			},
 	posts = {
