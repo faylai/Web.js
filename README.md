@@ -138,7 +138,7 @@ var noMimes = {
 		'exe' : function (req, res){
 				res.send('You can`t request any EXE files');
 			},
-		'SH' : function (req, res){
+		'sh' : function (req, res){
 				res.send('You can`t request any SH files');
 			}
 		};
