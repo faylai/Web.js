@@ -1,10 +1,11 @@
+//Modules
 var http = require("http"),
 	fs = require("fs"),
 	sys = require("sys"),
 	url = require("url"),
 	qs = require("querystring"),
 	net = require("net"),
-vents = require("events");
+	events = require("events");
 
 //Metas
 var web = exports,
@@ -13,7 +14,7 @@ var web = exports,
 	postHandlers = {},
 	erorrHandlers = {},
 	blockMimes = {};
-
+web.version = '0.1.4';
 web.mimes = { "3gp"   : "video/3gpp",
 				 "a"     : "application/octet-stream",
 				 "ai"    : "application/postscript",
@@ -81,6 +82,7 @@ web.mimes = { "3gp"   : "video/3gpp",
 				 "jpg"   : "image/jpeg",
 				 "js"    : "application/javascript",
 				 "json"  : "application/json",
+				 "jsonp" : "application/json",
 				 "log"   : "text/plain",
 				 "m3u"   : "audio/x-mpegurl",
 				 "m4v"   : "video/mp4",
@@ -191,14 +193,15 @@ function createHttpServer() {
     var content;
     server = http.createServer(function (req, res) {
     		var path = url.parse(req.url).pathname.substring(1);
-
+    
     		//Response
     		res.send = function (data, alive) {
+    			this.writeHead(200, {'Content-Type' : "text/html"});
+    			this.write(data);
     			if (alive) {
-				res.write(data);
-				return this;
+    				return this;
     			} else {
-    				res.end(data);
+    				this.end();
     				return this;
     			}
     		};
@@ -220,6 +223,7 @@ function createHttpServer() {
     					res.write(data);
     					res.end();
     					break;
+				case "array":
     				case "object":
     					var sJSON = JSON.stringify(data);
     					this.charset = "application/json";
@@ -307,7 +311,6 @@ var	getHandler = function (req, res, getpath) {
 					var querystrings = url.parse(req.url, true).query;
 					if (uhReg.test(getpath)) {
 						try {
-							res.writeHead(200, {'Content-type' : 'text/html'});
 							getHandlers[key](req, res, querystrings);
 						} catch(ex) {
 							if (erorrHandlers.get) {
@@ -327,6 +330,12 @@ var	getHandler = function (req, res, getpath) {
 			var uhReg = new RegExp(key, "i");
 			if (uhReg.test(getpath)) {
 				scriptfile = urlHandlers[key];
+				var keys = [];
+				for (var i = 1; i < 10;i++)
+					keys.push(RegExp['$' + i]);
+				for (var j = 1; j < 10; j++)
+						if (keys[j - 1]) 
+							scriptfile = scriptfile.replace('$' + j, keys[j - 1]);
 				break;
 			}
 		}
@@ -396,7 +405,6 @@ web.run = function (getpath, port, host, backserver) {
 	if (server == undefined) {
         server = createHttpServer();
         web.servers.push(server);
-	web.server = server;
 	}
 	if (getpath == undefined) {
 		server.listen(80);
@@ -457,6 +465,7 @@ web.reg = function (format, mime) {
 	}
 	return this;
 };
+web.server = server;
 
 //TCP Server
 var sockets = [];
@@ -474,14 +483,17 @@ web.net = function (port, callback) {
 				socket.listeners('message')[i](data);
 			}
 		});
-		socket.on('end', function () {
+		socket.on('end', function () { 
 			var a = sockets.indexOf(socket);
 			sockets.splice(a, 1);
 			for (var i = 0; i < socket.listeners('disconnect').length; i++) {
 				socket.listeners('disconnect')[i]();
 			}
 		});
-		socket.send = socket.write;
+		socket.send = function (str) {
+			socket.write(str);
+			console.log('send success');
+		};
 		socket.broadcast = function (data) {
 			for (var i = 0; i < sockets.length; i++) {
 				if (sockets[i] == socket) continue;
