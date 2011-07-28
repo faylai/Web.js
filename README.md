@@ -45,6 +45,7 @@ require('webjs').run()
 
 ## URL路由映射 ##
 Web.js提供了十分简单的URL路由映射方法
+
 ```javascript
 var web = require('webjs');
 
@@ -58,6 +59,7 @@ web.run(urlRouter, 8888);
 ## HTTP方法 ##
 
 ### GET ###
+
 ```javascript
 var web = require('webjs');
 
@@ -93,6 +95,7 @@ web.run({}, 8888)
 
 ## HTTPS ##
 HTTPS方法与HTTP方法相同
+
 ```javascript
 var web = require('webjs');
 
