@@ -135,7 +135,7 @@ var noMimes = {
 		'php' : function (req, res){					//只传入Request和Response
 				res.send('You can`t request any PHP files');
 			},
-		'EXE' : function (req, res){
+		'exe' : function (req, res){
 				res.send('You can`t request any EXE files');
 			},
 		'SH' : function (req, res){
