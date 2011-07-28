@@ -1,5 +1,6 @@
 //Modules
 var http = require("http"),
+	https = require("https"),
 	fs = require("fs"),
 	sys = require("sys"),
 	url = require("url"),
