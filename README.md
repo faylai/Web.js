@@ -13,7 +13,7 @@ npm install webjs
 var web = require('webjs');
 
 var urlHandlers = {					//URL路由功能(包括文件映射和域名跳转)
-		'^([a-zA-Z0-9])' : 'page.html', //Return the 'page.html' data. 返回 'page.html' 的数据。(支持正则表达式)
+		'^(.*)' : 'page.html', //Return the 'page.html' data. 返回 'page.html' 的数据。(支持正则表达式)
 		'^google' : 'http://www.google.com' //When the path name is 'google', the browser will redirect to Google homepage.  当访问/google时，浏览器自动跳转到Google首页。
 		},
     getHandlers = {					//GET方法服务器响应
