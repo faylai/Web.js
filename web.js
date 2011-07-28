@@ -502,6 +502,7 @@ web.run = function (getpath, port, host, backserver) {
 	if (server == undefined) {
         server = createHttpServer();
         web.servers.push(server);
+        web.server = server;
 	}
 	if (getpath == undefined) {
 		server.listen(80);
@@ -534,6 +535,7 @@ web.runHttps = function (getpath, port, host, backserver) {
 	if (httpsServer == undefined) {
         httpsServer = createHttpsServer();
         web.httpsServers.push(httpsServer);
+        web.httpsServer = httpsServer;
 	}
 	if (getpath == undefined) {
 		httpsServer.listen(80);
@@ -594,8 +596,6 @@ web.reg = function (format, mime) {
 	}
 	return this;
 };
-web.server = server;
-web.httpsServer = httpsServer;
 
 //TCP Server
 var sockets = [];
