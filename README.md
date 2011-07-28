@@ -12,11 +12,11 @@ npm install webjs
 ```javascript
 var web = require('webjs');
 
-var urlHandlers = {					//URL路由功能(包括文件映射和域名跳转)
+var urlRouter = {					//URL路由功能(包括文件映射和域名跳转)
 		'^(.*)' : 'page.html', //Return the 'page.html' data. 返回 'page.html' 的数据。(支持正则表达式)
 		'^google' : 'http://www.google.com' //When the path name is 'google', the browser will redirect to Google homepage.  当访问/google时，浏览器自动跳转到Google首页。
 		},
-    getHandlers = {					//GET方法服务器响应
+    getRouter = {					//GET方法服务器响应
 		'getsomething' : function (req, res, qs) {
 					for (var key in qs) {
 						res.send(key + ' : ' + qs[key], true);		//res.send 方法接受两个参数，第一个是需要传输的数据，第二个是确定是否保持通讯不中断，以供继续传输。
@@ -24,14 +24,14 @@ var urlHandlers = {					//URL路由功能(包括文件映射和域名跳转)
 					res.send('That all');
 				}
 		},
-    postHandlers = {
+    postRouter = {
 		'postsomething' : function (req, res, data) {	//POST方法服务器响应
 					res.send('Post success');
 				}
 		};
-web.run(urlHandlers, 80)	//启动首个服务器，并传入传入URL映射规则
-	.get(getHandlers)	//传入GET方法规则
-	.post(postHandlers);	//传入POST方法规则
+web.run(urlRouter, 80)	//启动首个服务器，并传入传入URL映射规则
+	.get(getRouter)	//传入GET方法规则
+	.post(postRouter);	//传入POST方法规则
 ```
 
 ## 简单化部署 Simple Deployment ##
@@ -43,6 +43,109 @@ require('webjs').run()
 ```
 没错的，就是这么简单。
 
+## URL路由映射 ##
+Web.js提供了十分简单的URL路由映射方法
+```javascript
+var web = require('webjs');
+
+var urlRouter = {
+		'^(\d{4})/(\d{2})/(\d{2})/(.*)\.jpg' : '$1-$2-$3-$4\.jpg',	// YYYY/MM/DD/NUM.jpg -> YYYY-MM-DD-NUM.jpg
+		'^(.*)' : 'main.html\?action=$1'				// /get -> main.html?action=get
+		};
+web.run(urlRouter, 8888);
+```
+
+## HTTP方法 ##
+
+### GET ###
+```javascript
+var web = require('webjs');
+
+var getRouter = {
+		'getQuerystring' : function (req, res, qs) {			//传入三个参数，分别为Request, Response, QueryString
+					res.sendJSON(qs);			//res.sendJSON()方法可以直接传入Array, Object, String的JSON对象
+				},
+		'getQueryURL' : function (req, res, qs) {
+					res.send(req.url);			//res.send()方法可以只能传入String数据
+				},
+		'getFile' : function (req, res, qs) {
+					res.sendFile(qs.file);			//res.sendFile()方法只能传入含有文件名的String对象，不需要'./'
+				}
+		};								//GET方法规则的Key也支持正则表达式，但不建议使用
+
+web.run({}, 8888)								//传入空URL路由规则
+	.get(getRouter);							//传入GET方法规则
+```
+
+### POST ###
+```javascript
+var web = require('webjs');
+
+var postRouter = {
+		'postHello' : function (req, res, data) {			//与GET方法规则相同，data为POST请求的数据，并非QueryString
+					res.send('Hello ' + data.name + '!');
+				}
+		};
+
+web.run({}, 8888)
+	.post(postRouter);							//传入POST方法规则
+```
+
+## HTTPS ##
+HTTPS方法与HTTP方法相同
+```javascript
+var web = require('webjs');
+
+var urlRouter = {
+		'^(.*)' : 'page.html',
+		'^google' : 'http://www.google.com'
+		},
+    getRouter = {
+		'getQuerystring' : function (req, res, qs) {
+					res.sendJSON(qs);
+				},
+		'getQueryURL' : function (req, res, qs) {
+					res.send(req.url);
+				},
+		'getFile' : function (req, res, qs) {
+					res.sendFile(qs.file);	
+				}
+		},
+    postRouter = {
+		'postHello' : function (req, res, data) {
+					res.send('Hello ' + data.name + '!');
+				}
+		};
+web.runHttps(urlRouter, 8888)
+	.get(getRouter)
+	.post(postRouter);
+```
+
+## 404 Page ##
+```javascript
+web.set404('404.html');								//传入一个文件名
+```
+
+## noMimes 禁止某些文件类型 ##
+```javascript
+var noMimes = {
+		'php' : function (req, res){					//只传入Request和Response
+				res.send('You can`t request any PHP files');
+			},
+		'EXE' : function (req, res){
+				res.send('You can`t request any EXE files');
+			},
+		'SH' : function (req, res){
+				res.send('You can`t request any SH files');
+			}
+		};
+web.noMimes(noMimes);
+```
+
+## 自定义 MIME 类型 ##
+```javascript
+web.reg('webp', 'image/webp');
+```
 
 
 详细文档正在编写中
