@@ -1,21 +1,29 @@
+/*
+ * @fileOverview
+ * @author Will Wen Gunn
+ * @version 0.2.1
+ */
+
+/*
+ * @constructor web
+ * @descripttion A simple HTTP, HTTPS and TCP framework for Node.js
+ * @see <a href="https://github.com/iwillwen/Web.js">Web.js on Github</a>
+ * @Simple Deployment require('webjs').run()
+ */
 //Modules
 var http = require("http"),
-	https = require("https"),
+	https =require("https"),
 	fs = require("fs"),
 	sys = require("sys"),
 	url = require("url"),
 	qs = require("querystring"),
 	net = require("net"),
+	mu = require("mustache"),
 	events = require("events");
 
 //Metas
-var web = exports,
-	urlHandlers = {},
-	getHandlers = {},
-	postHandlers = {},
-	erorrHandlers = {},
-	blockMimes = {};
-web.version = '0.1.6';
+var web = exports;
+web.version = '0.2.1';
 web.mimes = { "3gp"   : "video/3gpp",
 				 "a"     : "application/octet-stream",
 				 "ai"    : "application/postscript",
@@ -186,7 +194,14 @@ web.mimes = { "3gp"   : "video/3gpp",
 				 "yml"   : "text/yaml",
 				 "zip"   : "application/zip"
 				},
-			web.metas = {},
+			web.metas = {
+				set tmplDir(val) {
+					mu.templateRoot = './' + val;
+				},
+				get tmplDir() {
+					return mu.templateRoot;
+				}
+			},
 			web.servers = [],
 			web.httpsServers = [];
 //Foundation Server
@@ -196,18 +211,28 @@ function createHttpServer() {
     var content;
     server = http.createServer(function (req, res) {
     		var path = url.parse(req.url).pathname.substring(1);
-    
     		//Response
-    		res.send = function (data, alive) {
-    			this.writeHead(200, {'Content-Type' : "text/html"});
+		/*
+		 * @description 发送数据到客户端
+		 * @param {String} data 发送的数据*
+		 * @param {Boolean} last 是否是最后一次发送(建议在最后一次异步发送使用*)
+		 */
+    		res.send = function (data, last) {
     			this.write(data);
-    			if (alive) {
+			if (last) {
+				res.end();
     				return this;
-    			} else {
-    				this.end();
-    				return this;
-    			}
+			} else {
+				return this;
+			}
     		};
+		res.setTimeout = function (fn, t) {
+			setTimeout(fn, t)
+		};
+		/*
+		 * @description 发送指定文件到客户端
+		 * @param {String} fileName 需要发送的文件的文件名(不包括文件名前端的'/');*
+		 */
     		res.sendFile = function (fileName) {
     			var format = fileName.split('.');
     			fs.readFile("./" + fileName, function (err, data) {
@@ -217,7 +242,11 @@ function createHttpServer() {
     				res.write(data);
     				res.end();
     			});
-    		}
+    		};
+		/*
+		 * @description 发送JSON数据到客户端
+		 * @param {Array} data 需要发送的数据，可以是Array, Object或是已经编码的JSON字符串*
+		 */
     		res.sendJSON = function (data) {
     			switch (typeof data) {
     				case "string":
@@ -235,7 +264,13 @@ function createHttpServer() {
     					res.end();
     					break;
     			}
-    		}
+    		};
+		/*
+		 * @description 在客户端设置cookies
+		 * @param {String} name cookies的名字*
+		 * @param {String} val cookies的数据*
+		 * @param {Object} options cookies的详细设置
+		 */
     		res.cookie = function (name, val, options) {
     			options = options || {};
     			if ('maxAge' in options) options.expires = new Date(Date.now() + options.maxAge);
@@ -244,6 +279,11 @@ function createHttpServer() {
     			this.header('Set-Cookie', cookie);
     			return this;
     		};
+		/*
+		 * @decription 清除某指定cookies
+		 * @param {String} name 需要清除的cookies的名字*
+		 * @param {Object} options 详细设置
+		 */
     		res.clearCookie = function (name, options) {
     			var opts = { expires: new Date(1) };
     
@@ -256,6 +296,10 @@ function createHttpServer() {
     		req.addListener('data', function(chunk) {
     			content += chunk;
     		});
+		/*
+		 * @description 检测请求的MIME类型是否为指定的MIME类型
+		 * @param {String} type 需要检测的MIME类型*
+		 */
     		req.type = function(type) {
     			var contentType = this.headers['content-type'];
     			if (!contentType) return;
@@ -268,41 +312,57 @@ function createHttpServer() {
     			}
     			return !! ~contentType.indexOf(type);
     		};
+		/*
+		 * @description 返回请求头中的指定数据
+		 * @param {String} sHeader 需要查询的头数据名*
+		 */
     		req.header = function (sHeader) {
     			if (this.headers[sHeader]) {
     				return this.headers[sHeader];
     			} else {
     				return undefined;
     			}
-    		}
-    
+    		};
+
     		switch (req.method) {
     			case "GET":
-    				getHandler(req, res, path);
+    				getHandler(req, res, path, this);
     				break;
     			case "POST":
-    				postHandler(req, res, path);
+    				postHandler(req, res, path, this);
     				break;
     		}
     	});
-    return server;
+	server.urlHandlers = {};
+	server.getHandlers = {};
+	server.postHandlers = {};
+	server.erorrHandlers = {};
+	server.blockMimes = {};
+	return server;
 }
 function createHttpsServer() {
     var content;
     httpsServer = https.createServer(function (req, res) {
     		var path = url.parse(req.url).pathname.substring(1);
-    
+                /*
+                 * @description 发送数据到客户端
+                 * @param {String} data 发送的数据*
+                 * @param {Boolean} last 是否是最后一次发送(建议在最后一次的异步发送使用*)
+                 */
     		//Response
-    		res.send = function (data, alive) {
-    			this.writeHead(200, {'Content-Type' : "text/html"});
+    		res.send = function (data, last) {
     			this.write(data);
-    			if (alive) {
+    			if (last !== undefined) {
     				return this;
     			} else {
     				this.end();
     				return this;
     			}
     		};
+                /*
+                 * @description 发送指定文件到客户端
+                 * @param {String} fileName 需要发送的文件的文件名(不包括文件名前端的'/');*
+                 */
     		res.sendFile = function (fileName) {
     			var format = fileName.split('.');
     			fs.readFile("./" + fileName, function (err, data) {
@@ -312,7 +372,12 @@ function createHttpsServer() {
     				res.write(data);
     				res.end();
     			});
-    		}
+    		};
+                /*
+                 * @description 发送JSON数据到客户端
+                 * @param {Array} data 需要发送的数据，可以是Array, Object或是已经编码
+的JSON字符串*
+                 */
     		res.sendJSON = function (data) {
     			switch (typeof data) {
     				case "string":
@@ -330,7 +395,13 @@ function createHttpsServer() {
     					res.end();
     					break;
     			}
-    		}
+    		};
+                /*
+                 * @description 在客户端设置cookies
+                 * @param {String} name cookies的名字*
+                 * @param {String} val cookies的数据*
+                 * @param {Object} options cookies的详细设置
+                 */
     		res.cookie = function (name, val, options) {
     			options = options || {};
     			if ('maxAge' in options) options.expires = new Date(Date.now() + options.maxAge);
@@ -339,6 +410,11 @@ function createHttpsServer() {
     			this.header('Set-Cookie', cookie);
     			return this;
     		};
+                /*
+                 * @decription 清除某指定cookies
+                 * @param {String} name 需要清除的cookies的名字*
+                 * @param {Object} options 详细设置
+                 */
     		res.clearCookie = function (name, options) {
     			var opts = { expires: new Date(1) };
     
@@ -351,6 +427,10 @@ function createHttpsServer() {
     		req.addListener('data', function(chunk) {
     			content += chunk;
     		});
+                /*
+                 * @description 检测请求的MIME类型是否为指定的MIME类型
+                 * @param {String} type 需要检测的MIME类型*
+                 */
     		req.type = function(type) {
     			var contentType = this.headers['content-type'];
     			if (!contentType) return;
@@ -363,24 +443,32 @@ function createHttpsServer() {
     			}
     			return !! ~contentType.indexOf(type);
     		};
+                /*
+                 * @description 返回请求头中的指定数据
+                 * @param {String} sHeader 需要查询的头数据名*
+                 */
     		req.header = function (sHeader) {
     			if (this.headers[sHeader]) {
     				return this.headers[sHeader];
     			} else {
     				return undefined;
     			}
-    		}
-    
+    		};  
     		switch (req.method) {
     			case "GET":
-    				getHandler(req, res, path);
+    				getHandler(req, res, path, httpsServer);
     				break;
     			case "POST":
-    				postHandler(req, res, path);
+    				postHandler(req, res, path, httpsServer);
     				break;
     		}
     	});
-    return httpsServer;
+	httpsServer.urlHandlers = {};
+	httpsServer.getHandlers = {};
+	httpsServer.postHandlers = {};
+	httpsServer.erorrHandlers = {};
+	httpsServer.blockMimes = {};
+	return httpsServer;
 }
 //404 page
 var page404 = "Page not found.",
@@ -389,13 +477,13 @@ var page404 = "Page not found.",
 	};
 
 //HTTP handler
-var	getHandler = function (req, res, getpath) {
+var getHandler = function (req, res, getpath, server) {
 		switch (getpath) {
 			case "":
-				if ("/" in urlHandlers) {
-					res.sendFile(urlHandlers["/"]);
-				} else if ("/" in getHandlers) {
-					getHandlers["/"](req, res);
+				if ("/" in server.urlHandlers) {
+					res.sendFile(server.urlHandlers["/"]);
+				} else if ("/" in server.getHandlers) {
+					server.getHandlers["/"](req, res);
 				} else {
 					res.sendFile("index.html");
 				}
@@ -404,30 +492,30 @@ var	getHandler = function (req, res, getpath) {
 				res.sendFile("favicon.ico");
 				break;
 			default:
-				for (var key in getHandlers) {
+				for (var key in server.getHandlers) {
 					var uhReg = new RegExp(key, "i");
 					var querystrings = url.parse(req.url, true).query;
 					if (uhReg.test(getpath)) {
 						try {
-							getHandlers[key](req, res, querystrings);
+							res.writeHead(200, {'Content-type' : 'text/html'});
+							server.getHandlers[key](req, res, querystrings);
 						} catch(ex) {
-							if (erorrHandlers.get) {
-								return erorrHandlers.get(req, res);
-							} else {
-								return send404(res);
+							if (server.erorrHandlers.get) {
+								return server.erorrHandlers.get(req, res);
 							}
 						}
+						return;
 					}
 				}
-				urlHandler(req, res, getpath);
+				urlHandler(req, res, getpath, server);
 		}
 	},
-	urlHandler = function (req, res, getpath) {
+	urlHandler = function (req, res, getpath, server) {
 		var scriptfile;
-		for (var key in urlHandlers) {
+		for (var key in server.urlHandlers) {
 			var uhReg = new RegExp(key, "i");
 			if (uhReg.test(getpath)) {
-				scriptfile = urlHandlers[key];
+				scriptfile = server.urlHandlers[key];
 				var keys = [];
 				for (var i = 1; i < 10;i++)
 					keys.push(RegExp['$' + i]);
@@ -438,9 +526,8 @@ var	getHandler = function (req, res, getpath) {
 			}
 		}
 		if (/^http/.test(scriptfile)) {
-			res.setHeader('Location', scriptfile);
-			res.writeHead(301, {'Content-Type': 'text/html'});
-			res.end('<meta http-equiv="refresh" content="5; ' + scriptfile + '" /><p>Redirecting to ' + scriptfile + '</p>');
+			res.writeHead(302, {'Location':scriptfile});
+			res.end();
 			console.log('Redirected to ' + scriptfile);
 			return;
 		}
@@ -453,21 +540,22 @@ var	getHandler = function (req, res, getpath) {
 				res.end();
 			});
 		} else {
-			fileHandler(req, res, getpath);
+			fileHandler(req, res, getpath, server);
 		}
 	},
-	postHandler = function (req, res, postpath) {
+	postHandler = function (req, res, postpath, server) {
         var request = {};
 		content = content.substring(15);
 		request = qs.parse(content);
-		for (var key in postHandlers) {
+		for (var key in server.postHandlers) {
 			var uhReg = new RegExp(key, "i");
 			if (uhReg.test(postpath)) {
 				try {
-					postHandlers[key](req, res, request);
+					res.write(200, {'Content-type':'text/plain'});
+					server.postHandlers[key](req, res, request);
 				} catch(ex) {
-					if (erorrHandlers.post) {
-						return erorrHandlers.post(req, res);
+					if (server.erorrHandlers.post) {
+						return server.erorrHandlers.post(req, res);
 					} else {
 						return send404(res);
 					}
@@ -475,38 +563,69 @@ var	getHandler = function (req, res, getpath) {
 			}
 		}
     },
-	fileHandler = function (req, res, getpath) {
+	fileHandler = function (req, res, getpath, server) {
 		var format = getpath.split('.');
-		if (format[format.length - 1] in blockMimes) {
-			blockMimes[format[format.length - 1]](req, res);
+		if (format[format.length - 1] in server.blockMimes) {
+			server.blockMimes[format[format.length - 1]](req, res);
 		} else {
 			res.sendFile(getpath);
 		}
 	};
 
 //Method
-web.get = function (_gethandlers) {
+/*
+ * @description 设置当前或指定Server的GetRouter
+ * @param {Object} _gethandlers 传入的GetRouter*
+ * @param {Object} server 可指定Server
+ */
+web.get = function (_gethandlers, server) {
 	var key;
-	for (key in _gethandlers) {
-		getHandlers[key] = _gethandlers[key];
+	if (server) {
+		for (key in _gethandlers)
+			server.getHandlers[key] = _gethandlers[key];
+	} else {
+		for (key in _gethandlers)
+			web.server.getHandlers[key] = _gethandlers[key];
 	}
 	return this;
 };
-web.post = function (_posthandlers) {
+/*
+ * @description 设置当前货指定的Server的PostRouter
+ * @param {Object} _posthandlers 传入的PostRouter
+ * @param {Object} server 可指定Server
+ */
+web.post = function (_posthandlers, server) {
 	var key;
-	for (key in _posthandlers) {
-		postHandlers[key] = _posthandlers[key];
+	if (server) {
+		for (key in _posthandlers)
+			server.postHandlers[key] = _posthandlers[key];
+	} else {
+		for (key in _posthandlers)
+			web.server.postHandlers[key] = _posthandlers[key];
 	}
 	return this;
 };
+/*
+ * @description 启动HTTP Server的主方法
+ * @param {Object} getpath 传入的URLRouter*
+ * @param {Number} port 监听的端口*
+ * @param {String} host 监听的域名*
+ * @param {Boolean} backserver 是否返回该Server对象(建议在启动多服务器的时候使用*)
+ */
 web.run = function (getpath, port, host, backserver) {
 	if (server == undefined) {
-        server = createHttpServer();
-        web.servers.push(server);
-        web.server = server;
+	        server = createHttpServer();
+		web.servers.push(server);
+		web.server = server;
+		console.log('Create server.');
+	} else 
+	if (backserver) {
+		server = createHttpServer();
+		web.server = server;
+		console.log('Create new server.');
 	}
 	if (getpath == undefined) {
-		server.listen(80);
+		web.server.listen(80);
 		console.log('Server is running on 127.0.0.1:80');
 		if (backserver) {
 		    return server;
@@ -516,27 +635,34 @@ web.run = function (getpath, port, host, backserver) {
 	} else {
 		var key;
 		for (key in getpath) {
-			urlHandlers[key] = getpath[key];
+			web.server.urlHandlers[key] = getpath[key];
 		}
 		if (port !== undefined) {
 			if (host === undefined) {
-				server.listen(port);
+				web.server.listen(port);
 			} else {
-				server.listen(port, host);
+				web.server.listen(port, host);
 			}
 		}
 		if (backserver){
-		    return server;
+		    return web.server;
 		} else {
 		    return this;
 		}
 	}
 };
+/*
+ * @description 启动HTTPS Server的主方法
+ * @param {Object} getpath 传入的URLRouter*
+ * @param {Number} port 监听的端口*
+ * @param {String} host 监听的域名*
+ * @param {Boolean} backserver 是否返回该Server对象(建议在启动多服务器的时候使用*)
+ */
 web.runHttps = function (getpath, port, host, backserver) {
 	if (httpsServer == undefined) {
-        httpsServer = createHttpsServer();
-        web.httpsServers.push(httpsServer);
-        web.httpsServer = httpsServer;
+	        httpsServer = createHttpsServer();
+		web.httpsServers.push(httpsServer);
+		web.httpsServer = httpsServer;
 	}
 	if (getpath == undefined) {
 		httpsServer.listen(80);
@@ -549,28 +675,36 @@ web.runHttps = function (getpath, port, host, backserver) {
 	} else {
 		var key;
 		for (key in getpath) {
-			urlHandlers[key] = getpath[key];
+			web.httpsServer.urlHandlers[key] = getpath[key];
 		}
 		if (port !== undefined) {
 			if (host === undefined) {
-				httpsServer.listen(port);
+				web.httpsServer.listen(port);
 			} else {
-				httpsServer.listen(port, host);
+				web.httpsServer.listen(port, host);
 			}
 		}
 		if (backserver){
-		    return httpsServer;
+		    return web.httpsServer;
 		} else {
 		    return this;
 		}
 	}
 };
+/*
+ * @description 设置自定义404页面
+ * @param {String} path 需要设置的文件路径(不包括'/')*
+ */
 web.set404 = function (path) {
 	fs.readFile("./" + path, function (err, data) {
 		page404 = data;
 	});
 	return this;
 };
+/*
+ * @description 设置GET和POST响应错误时的错误响应
+ * @param {Object} handlers 传入的ErorrHandlers*
+ */
 web.erorr = function (handlers) {
 	var key;
 	for (key in handlers) {
@@ -578,6 +712,10 @@ web.erorr = function (handlers) {
 	}
 	return this;
 };
+/*
+ * @description 禁止请求某些文件格式时的响应器
+ * @param {Object} handlers 传入的响应器*
+ */
 web.noMimes = function (handlers) {
 	var key;
 	for (key in handlers) {
@@ -585,19 +723,40 @@ web.noMimes = function (handlers) {
 	}
 	return this;
 };
-web.meta = function (key, value) {
+/*
+ * @description 设置一些需要用到的元数据
+ * @param {String} key 元数据的Key*
+ * @param {String} value 元数据的值*
+ */
+web.set = function (key, value) {
 	this.metas[key] = value;
 	return this;
 };
+/*
+ * @description 自定义MIME类型
+ * @param {String} format 文件格式后缀*
+ * @param {String} mime MIME类型*
+ */
 web.reg = function (format, mime) {
-	if (/^./.test(format)) {
+	if (/^\./.test(format)) {
 		this.mimes[format.substring(1)] = mime;
 	} else {
 		this.mimes[format] = mime;
 	}
 	return this;
 };
-
+/*
+ * @description 调用Mustache进行模板渲染
+ * @param {String} 模板的名称
+ * @param {Object} 
+ */
+web.render = function (tmlpName, obj) {
+	var sHtml;
+	mu.render(tmlpName + '.html', obj, {}, function (err, data) {
+		data.on('data', function(d) {sHtml += d;});
+	});
+	return sHtml;
+};
 //TCP Server
 var sockets = [];
 web.net = function (port, callback) {
